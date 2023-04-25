@@ -24,7 +24,7 @@ class UserValidator implements OAuth2TokenValidator<Jwt> {
         String userEmail = jwt.getClaimAsString("email");
         List<String> userRoles = jwt.getClaimAsStringList("user_roles");
         if (userEmail != null && !userEmail.equals("")) { 
-            Freelancer f = freelancerRepository.findFirstByEmail(userEmail);
+            Freelancer f = (Freelancer) freelancerRepository.findFirstByEmail(userEmail, null);
             if (f==null && (userRoles==null || userRoles.isEmpty())) {     
                 String username = jwt.getClaimAsString("nickname");
                 freelancerRepository.save(new Freelancer(userEmail, username));

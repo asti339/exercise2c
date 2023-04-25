@@ -1,8 +1,13 @@
 <script>
     import axios from "axios";
-    import { jwt_token} from "../store";
+    import { jwt_token } from "../store";
+    import { querystring } from "svelte-spa-router";
 
     const api_root = window.location.origin;
+
+    let currentPage;
+    let nrOfPages = 0;
+    let defaultPageSize = 4;
 
     let freelancers = [];
     let freelancer = {
@@ -15,7 +20,7 @@
         var config = {
             method: "get",
             url: api_root + "/api/freelancer",
-            headers: {Authorization: "Bearer "+$jwt_token},
+            headers: { Authorization: "Bearer " + $jwt_token },
         };
 
         axios(config)
@@ -35,7 +40,7 @@
             url: api_root + "/api/freelancer",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: "Bearer "+$jwt_token
+                Authorization: "Bearer " + $jwt_token,
             },
             data: freelancer,
         };
@@ -51,7 +56,6 @@
             });
     }
 </script>
-
 
 <h1 class="mt-3">Create Freelancer</h1>
 <form class="mb-5">
@@ -77,7 +81,9 @@
             />
         </div>
     </div>
-    <button type="button" class="btn btn-primary" on:click={createFreelancer}>Submit</button>
+    <button type="button" class="btn btn-primary" on:click={createFreelancer}
+        >Submit</button
+    >
 </form>
 
 <h1>All Freelancers</h1>
