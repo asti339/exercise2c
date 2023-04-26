@@ -2,7 +2,9 @@
     import axios from "axios";
     import { user, jwt_token } from "../store";
     import { querystring } from "svelte-spa-router";
+
     const api_root = window.location.origin;
+
     let currentPage;
     let nrOfPages = 0;
     let defaultPageSize = 4;
@@ -10,14 +12,18 @@
     let earningsMin;
     let jobType;
 
+    let myFreelancerId;
+
     let jobs = [];
     let job = {
         description: null,
         earnings: null,
         jobType: null,
     };
+
     $: {
         let searchParams = new URLSearchParams($querystring);
+
         if (searchParams.has("page")) {
             currentPage = searchParams.get("page");
         } else {
@@ -25,9 +31,28 @@
         }
         getJobs();
     }
+
+    function getMyFreelancerId() {
+        var config = {
+            method: "get",
+            url: api_root + "/api/me/freelancer",
+            headers: { Authorization: "Bearer " + $jwt_token },
+        };
+
+        axios(config)
+            .then(function (response) {
+                myFreelancerId = response.data.id;
+            })
+            .catch(function (error) {
+                alert("Could not get Freelancer associated to current user");
+                console.log(error);
+            });
+    }
+    getMyFreelancerId();
+
     function getJobs() {
         let query =
-            "?pageSize=" + defaultPageSize + " &pageNumber=" + currentPage;
+            "?pageSize=" + defaultPageSize + "&pageNumber=" + currentPage;
 
         if (earningsMin) {
             query += "&min=" + earningsMin;
@@ -41,9 +66,11 @@
             url: api_root + "/api/job" + query,
             headers: { Authorization: "Bearer " + $jwt_token },
         };
+
         axios(config)
             .then(function (response) {
                 jobs = response.data.content;
+
                 nrOfPages = response.data.totalPages;
             })
             .catch(function (error) {
@@ -51,8 +78,7 @@
                 console.log(error);
             });
     }
-
-    getJobs();
+    //getJobs();
 
     function createJob() {
         var config = {
@@ -72,6 +98,40 @@
             })
             .catch(function (error) {
                 alert("Could not create Job");
+                console.log(error);
+            });
+    }
+
+    function assignToMe(jobId) {
+        var config = {
+            method: "put",
+            url: api_root + "/api/service/me/assignjob?jobId=" + jobId,
+            headers: { Authorization: "Bearer " + $jwt_token },
+        };
+        axios(config)
+            .then(function (response) {
+                getJobs();
+            })
+            .catch(function (error) {
+                alert("Could not assign job to me");
+                console.log(error);
+            });
+    }
+
+    function completeMyJob(jobId) {
+        var config = {
+            method: "put",
+            url: api_root + "/api/service/me/completejob?jobId=" + jobId,
+            headers: { Authorization: "Bearer " + $jwt_token },
+        };
+
+        axios(config)
+            .then(function (response) {
+                console.log(JSON.stringify(response.data));
+                getJobs();
+            })
+            .catch(function (error) {
+                alert("Could not mark as completed");
                 console.log(error);
             });
     }
@@ -122,7 +182,7 @@
     </form>
 {/if}
 
-<h1>All Jobsss</h1>
+<h1>All Jobs</h1>
 <div class="row my-3">
     <div class="col-auto">
         <label for="" class="col-form-label">Earnings: </label>
@@ -132,6 +192,7 @@
             class="form-control"
             type="number"
             placeholder="min"
+            id="earningsfilter"
             bind:value={earningsMin}
         />
     </div>
@@ -139,7 +200,7 @@
         <label for="" class="col-form-label">Job Type: </label>
     </div>
     <div class="col-3">
-        <select bind:value={jobType} class="form-select" id="type" type="text">
+        <select bind:value={jobType} class="form-select" id="typefilter" type="text">
             <option value="ALL" />
             <option value="OTHER">OTHER</option>
             <option value="TEST">TEST</option>
@@ -147,6 +208,7 @@
             <option value="REVIEW">REVIEW</option>
         </select>
     </div>
+
     <div class="col-3">
         <a
             class="btn btn-primary"
@@ -158,6 +220,7 @@
         >
     </div>
 </div>
+
 <table class="table">
     <thead>
         <tr>
@@ -166,6 +229,7 @@
             <th scope="col">Earnings</th>
             <th scope="col">State</th>
             <th scope="col">FreelancerId</th>
+            <th scope="col">Actions</th>
         </tr>
     </thead>
     <tbody>
@@ -176,6 +240,34 @@
                 <td>{job.earnings}</td>
                 <td>{job.jobState}</td>
                 <td>{job.freelancerId}</td>
+                <td>
+                    {#if job.jobState === "ASSIGNED"}
+                        <span class="badge bg-secondary">Assigned</span>
+                    {:else if job.freelancerId === null}
+                        <button
+                            type="button"
+                            class="btn btn-primary btn-sm"
+                            on:click={() => {
+                                assignToMe(job.id);
+                            }}
+                        >
+                            Assign to me
+                        </button>
+                    {/if}
+                    {#if job.jobState === "DONE"}
+                        <span class="badge bg-secondary">Done</span>
+                    {:else if job.jobState === "ASSIGNED" && job.freelancerId === myFreelancerId }
+                        <button
+                            type="button"
+                            class="btn btn-primary btn-sm"
+                            on:click={() => {
+                                completeMyJob(job.id);
+                            }}
+                        >
+                            Complete Job
+                        </button>
+                    {/if}
+                </td>
             </tr>
         {/each}
     </tbody>
